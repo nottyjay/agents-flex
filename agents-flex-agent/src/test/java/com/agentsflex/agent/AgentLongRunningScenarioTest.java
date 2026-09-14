@@ -67,7 +67,7 @@ public class AgentLongRunningScenarioTest {
     }
 
     @Test
-    public void shouldPersistentlyCancelWaitingRunAndLetWorkerFinalizeIt() {
+    public void shouldPersistentlyCancelWaitingRunAndLetExplicitRunnerFinalizeIt() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger executions = new AtomicInteger();
@@ -85,13 +85,17 @@ public class AgentLongRunningScenarioTest {
             .addEventListener(events::add);
         AgentTurn waiting = requestRunner.run(agent, "execute");
 
-        AgentRunner workerRunner = new AgentRunner(turnStore, registry)
+        AgentRunner cancellationRunner = new AgentRunner(turnStore, registry)
             .addEventListener(events::add);
-        AgentTurn requested = workerRunner.requestCancellation(waiting.getId());
+        AgentTurn requested = cancellationRunner.requestCancellation(waiting.getId());
         assertTrue(requested.isCancellationRequested());
         assertEquals(AgentTurnStatus.WAITING_FOR_APPROVAL, requested.getStatus());
 
-        AgentTurn processed = workerRunner.runUntilBlocked(requested.getId());
+        // 停止请求只写入持久化信号，不会在后台自动扫描或推进 Turn。
+        // 业务线程可以在任意 Runner 中按 turnId 显式加载，并把任务推进到 CANCELLED。
+        AgentRunner executionRunner = new AgentRunner(turnStore, registry)
+            .addEventListener(events::add);
+        AgentTurn processed = executionRunner.runUntilBlocked(requested.getId());
         assertEquals(AgentTurnStatus.CANCELLED, processed.getStatus());
         assertEquals(0, executions.get());
         assertBefore(events, AgentEventType.CANCELLATION_REQUESTED,

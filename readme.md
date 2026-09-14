@@ -16,7 +16,7 @@ It is suitable for building intelligent customer service, enterprise knowledge b
 - **Unified model abstractions**: `ChatModel`, `EmbeddingModel`, `ImageModel`, `RerankModel`, and other interfaces wrap provider-specific capabilities.
 - **Consistent sync and streaming APIs**: The same Prompt, Options, interceptor, and context mechanisms work for both normal chat and streaming output.
 - **Complete Tool Calling flow**: Supports annotation-based scanning, programmatic tool building, tool execution, tool message feedback, and tool-level observability.
-- **Durable Agent runtime**: Provides snapshot recovery, tool approval, Worker leases, middleware, and event streams.
+- **Durable Agent runtime**: Provides snapshot recovery, tool approval, version-safe persistence, middleware, and event streams.
 - **Full RAG building blocks**: Includes document models, parsing, splitting, Embedding, vector stores, retrieval, and Rerank support.
 - **Production-oriented design**: Includes model routing, retry, load balancing, circuit breaking, OpenTelemetry observability, and Text2SQL safety interceptors.
 

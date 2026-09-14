@@ -9,7 +9,7 @@ description: 构建高风险工具审批流程，并通过 submitResume 和业�
 
 本示例模拟生产发布：模型生成部署参数后，Runner 在工具函数执行前保存 Snapshot 并等待人工批准；
 ChatMemory 同时出现待处理审批消息；审批服务调用 `submitResume` 后 CAS 更新原消息；业务线程使用
-另一个 Runner 领取原 Turn 并执行一次部署。
+另一个 Runner 按 turnId 加载原 Turn 并执行一次部署。框架不会自动扫描 Store，何时继续执行由业务线程决定。
 
 完整源码位于 `demos/agent-demo/src/main/java/com/agentsflex/demo/agent/HumanApprovalAgentDemo.java`。
 

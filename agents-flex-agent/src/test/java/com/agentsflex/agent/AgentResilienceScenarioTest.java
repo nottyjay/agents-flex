@@ -85,7 +85,7 @@ public class AgentResilienceScenarioTest {
     }
 
     @Test
-    public void shouldRetrySamePendingToolThroughWorkerWithoutRepeatingModelDecision() {
+    public void shouldExplicitlyRetrySamePendingToolWithoutRepeatingModelDecision() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         AtomicInteger attempts = new AtomicInteger();
@@ -108,14 +108,19 @@ public class AgentResilienceScenarioTest {
                 .build())
             .build();
         InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = new AgentRunner(store, new InMemoryAgentLoader(agent));
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        AgentRunner initialRunner = new AgentRunner(store, loader);
 
-        AgentTurn scheduled = runner.run(agent, "execute");
+        AgentTurn scheduled = initialRunner.run(agent, "execute");
         assertEquals(AgentTurnStatus.RETRY_SCHEDULED, scheduled.getStatus());
         assertEquals(AgentTurnExecutionPoint.PROCESS_TOOLS, scheduled.getExecutionPoint());
         assertEquals(1, scheduled.getPendingToolCalls().size());
+        assertEquals(1, model.getCallCount());
 
-        AgentTurn processed = runner.resume(scheduled.getId(), AgentResumeCommand.retry());
+        // RETRY_SCHEDULED 只记录下一次可执行时间。业务调度器到期后，必须显式调用 Runner；
+        // 使用共享 Store 的另一个 Runner 也能从原 ToolCall 继续，不会重新请求模型生成决策。
+        AgentRunner retryRunner = new AgentRunner(store, loader);
+        AgentTurn processed = retryRunner.resume(scheduled.getId(), AgentResumeCommand.retry());
 
         assertEquals(AgentTurnStatus.COMPLETED, processed.getStatus());
         assertEquals(2, attempts.get());

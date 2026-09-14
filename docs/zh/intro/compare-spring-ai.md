@@ -206,7 +206,7 @@ Spring AI 当前提供的服务端范围更完整。
 ## Agent 运行时对比
 
 Tool Calling 能让模型调用方法，但它本身不等于生产级 Agent。真正的 Agent 运行时需要知道任务执行到哪一步、
-为什么暂停、如何恢复、是否超预算，以及多个 Worker 如何避免重复执行。
+为什么暂停、如何恢复、是否超预算，以及多实例并发操作时如何防止旧快照覆盖最新进度。
 
 | 对比项描述 | Agents-Flex | Spring AI |
 | --- | --- | --- |
@@ -216,11 +216,12 @@ Tool Calling 能让模型调用方法，但它本身不等于生产级 Agent。�
 | Agent Turn 的并发版本保护 | **支持**。`AgentTurnStore` 使用版本 CAS 防止旧快照覆盖新进度 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 跨请求的审批、表单、暂停与恢复 | **整体支持**。等待是可持久化的正常状态，用户或外部系统可通过另一个请求恢复执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | Agent 执行预算 | **整体支持**。`AgentBudget` 统一限制迭代、Step、Tool、Token 与执行耗时，达到上限后由 Agent 状态机终止 Turn | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
-| 可持久化的 Agent 重试调度 | **整体支持**。`AgentRetryPolicy` 定义重试次数、退避间隔和最大等待时间，下一次重试时间随 Turn 快照持久化，可由 Worker 在到期后继续执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
+| 可持久化的 Agent 重试调度 | **整体支持**。`AgentRetryPolicy` 定义重试次数、退避间隔和最大等待时间，下一次重试时间随 Turn 快照持久化；到期后由业务调度器显式调用 Runner 继续执行 | <span class="vp-nowrap">❌ <strong>不支持</strong></span> |
 | 完整 Agent 生命周期事件与中间件 | **整体支持**。Turn、Step、Model、Tool 均有生命周期事件，并提供三层 Middleware 扩展点 | ⚠️ **部分支持**。Advisor 和 Observation 覆盖调用链，但没有同层级的 Turn 生命周期模型 |
 
-这部分是两者最根本的差异。Spring AI 可以构建会调用工具和 Subagent 的应用；Agents-Flex 进一步保证
-这些任务在等待审批、模型限流、进程重启和多实例调度之后仍能可靠继续。
+这部分是两者最根本的差异。Spring AI 可以构建会调用工具和 Subagent 的应用；Agents-Flex 进一步提供
+可持久化的执行现场和版本 CAS 边界。任务等待审批、遭遇模型限流或进程重启后，业务系统可以按 turnId
+显式调度 Runner 继续执行；框架本身不会扫描 Store 或自动领取任务。
 
 ## Skills 能力对比
 

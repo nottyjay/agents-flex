@@ -133,7 +133,7 @@ public final class AgentRunner {
     /**
      * 创建 Runner 并组装事件、模型调用与可选 ChatMemory 投影组件。
      *
-     * @param turnStore          Snapshot、CAS 和租约存储
+     * @param turnStore          Snapshot 与版本 CAS 存储
      * @param agentLoader        Agent 版本加载器
      * @param chatMemoryProvider 可选业务会话存储 Provider
      */
@@ -167,7 +167,7 @@ public final class AgentRunner {
         private AgentRunnerOptions runnerOptions = AgentRunnerOptions.defaults();
 
         /**
-         * 设置 Snapshot 与租约存储。
+         * 设置 Snapshot 与版本 CAS 存储。
          */
         public Builder turnStore(AgentTurnStore value) {
             turnStore = value;

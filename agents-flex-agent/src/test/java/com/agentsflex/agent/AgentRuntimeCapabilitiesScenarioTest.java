@@ -124,7 +124,7 @@ public class AgentRuntimeCapabilitiesScenarioTest {
     }
 
     @Test
-    public void shouldCombineStreamingApprovalWorkerAndProgress() {
+    public void shouldCombineStreamingApprovalExplicitRecoveryAndProgress() {
         ScriptedChatModel model = new ScriptedChatModel();
         model.enqueue(toolCalls(new ToolCall("danger-1", "export", "{}")));
         model.enqueue(new AiMessage("completed"));

@@ -214,7 +214,7 @@ public class AgentModelRecoveryTest {
     }
 
     @Test
-    public void shouldSubmitMessageWithoutExecutingAndLetWorkerContinueSameTurn() {
+    public void shouldSubmitMessageWithoutExecutingUntilBusinessRunnerContinuesSameTurn() {
         AgentScenarioTestSupport.QueueChatModel model =
             new AgentScenarioTestSupport.QueueChatModel();
         model.enqueue(prompt -> {
@@ -224,28 +224,42 @@ public class AgentModelRecoveryTest {
         model.enqueue(prompt -> {
             List<Message> messages = prompt.getMessages();
             assertEquals("继续", messages.get(messages.size() - 1).getTextContent());
-            return new AiMessage("worker continued");
+            return new AiMessage("business runner continued");
         });
         Agent agent = Agent.builder("async-model-recovery").chatModel(model).build();
         InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
-        AgentRunner runner = AgentRunner.builder()
+        InMemoryAgentLoader loader = new InMemoryAgentLoader(agent);
+        DefaultChatMemory memory = new DefaultChatMemory("async-model-recovery");
+        AgentRunner submissionRunner = AgentRunner.builder()
             .turnStore(store)
-            .agentLoader(new InMemoryAgentLoader(agent))
-            .chatMemoryProvider(id -> new DefaultChatMemory(id))
+            .agentLoader(loader)
+            .chatMemoryProvider(id -> memory)
             .build();
 
-        AgentTurn waiting = runner.run(agent, "async-model-recovery", "hello");
-        AgentTurn runnable = runner.submitMessage(
+        AgentTurn waiting = submissionRunner.run(agent, "async-model-recovery", "hello");
+        AgentTurn runnable = submissionRunner.submitMessage(
             agent, "async-model-recovery", "继续");
 
         assertEquals(waiting.getId(), runnable.getId());
         assertEquals(AgentTurnStatus.RUNNING, runnable.getStatus());
         assertEquals(1, model.getCallCount());
+        AgentTurnSnapshot persisted = store.load(runnable.getId());
+        assertEquals(AgentTurnStatus.RUNNING, persisted.getState().getStatus());
+        List<Message> persistedMessages = persisted.getState().getMessages();
+        assertTrue(persistedMessages.get(persistedMessages.size() - 1) instanceof UserMessage);
+        assertEquals("继续", persistedMessages.get(persistedMessages.size() - 1).getTextContent());
 
-        AgentTurn processed = runner.runUntilBlocked(runnable.getId());
+        // submitMessage 只保存可继续执行的状态，不会启动后台消费者。业务代码必须显式调用 Runner；
+        // 另一个 Runner 通过共享 Store 恢复同一 Turn，并携带刚刚提交的用户消息继续调用模型。
+        AgentRunner businessRunner = AgentRunner.builder()
+            .turnStore(store)
+            .agentLoader(loader)
+            .chatMemoryProvider(id -> memory)
+            .build();
+        AgentTurn processed = businessRunner.runUntilBlocked(runnable.getId());
 
         assertEquals(AgentTurnStatus.COMPLETED, processed.getStatus());
-        assertEquals("worker continued", processed.getFinalOutput());
+        assertEquals("business runner continued", processed.getFinalOutput());
         assertEquals(2, model.getCallCount());
     }
 

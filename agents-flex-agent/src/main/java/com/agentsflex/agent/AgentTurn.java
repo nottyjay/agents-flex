@@ -44,7 +44,7 @@ public final class AgentTurn {
      */
     private final Agent agent;
     /**
-     * 生命周期、预算、租约等可持久化状态。
+     * 生命周期、执行阶段、预算和停止信号等可持久化状态。
      */
     private final AgentTurnState state;
     /**
